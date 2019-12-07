@@ -59,6 +59,8 @@ app.use(errorHandler);
 modelInitializer()
     .then(() => {
 
+        const userModel = require('./models/users');
+        console.log('User Model: %o', userModel.schema.path('password').options.min)
         app.listen(config.server.port, function () {
             app.locals.startedAt = new Date();
             console.log('Server listening on %i port', config.server.port);
