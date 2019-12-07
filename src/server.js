@@ -6,6 +6,7 @@ const morgan = require('morgan');
 const config = require('./config');
 const bodyParser = require('body-parser');
 const errorHandler = require('./middlewares/error-handler');
+const modelInitializer = require('./models');
 
 console.log('Server is starting...');
 
@@ -55,9 +56,13 @@ app.all('*', function () {
 app.use(errorHandler);
 
 // Run the server
-app.listen(config.server.port, function () {
-    app.locals.startedAt = new Date();
-    console.log('Server listening on %i port', config.server.port);
-})
+modelInitializer()
+    .then(() => {
+
+        app.listen(config.server.port, function () {
+            app.locals.startedAt = new Date();
+            console.log('Server listening on %i port', config.server.port);
+        })
+    })
 
 
