@@ -1,18 +1,36 @@
 const Joi = require('@hapi/joi');
-const Boom = require('@hapi/boom');
 
-const emptyObject = Joi.object({});
+/*
+ * The default rule! If you don't specify any Joi definition,
+ *  the object must be empty
+ *
+*/
 
+const emptyRule = Joi.object({});
+
+/**
+ * Assert and attempt received data against Joi definition
+ *
+ * @param {Object} validate - A Joi object
+ * @returns {undefined} It will call next middleware properly
+ */
 module.exports = validate => (req, res, next) => {
 
-    return Promise
-        .all(
-            ['params', 'query', 'body']
-                .map(target =>
-                    Joi.validate(req[target], validate[target] || emptyObject))
-        )
-        .then(() => next())
-        .catch(error => {
-            next(error);
-        });
+    for (const field of ['params', 'query', 'body']) {
+
+        const target = req[field];
+        const joiObject = validate[field] || emptyRule; // Should define every aspects
+
+        try {
+            Joi.assert(target, joiObject);
+
+            const attempt = Joi.attempt(target, joiObject);
+            req[field] = attempt;
+
+        } catch (e) {
+            return next(e);
+        }
+    }
+
+    next();
 }
