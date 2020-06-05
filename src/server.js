@@ -1,70 +1,27 @@
+const Boom = require('@hapi/boom')
 const express = require('express')
-const api = require('./api');
-const cors = require('cors');
-const Boom = require('@hapi/boom');
-const morgan = require('morgan');
-const config = require('./config');
-const bodyParser = require('body-parser');
-const errorHandler = require('./middlewares/error-handler');
-const modelInitializer = require('./models');
+const config = require('./config')
+const path = require('path')
+const registerAPI = require('./api')
+const errorHandler = require('./middlewares/error-handler')
 
-console.log('Server is starting...');
+global.$logger = config.loggers.defaultLogger
 
-// Register Middleware
-const app = express();
+const server = new express()
+server.use(express.json())
+server.use(express.urlencoded({ extended: false }))
+server.use(express.static(path.join(__dirname, 'public')))
+server.use(config.loggers.expressLogger)
 
-app.use(bodyParser.json());
-app.use(morgan('combined'));
-app.use(cors());
+registerAPI(server)
 
-// Ping Pong
-app.get('/ping', function (req, res) {
+server.all('*', function (req, res, next) {
+  next(Boom.notFound())
+})
 
-    const ms = Math.abs(new Date() - app.locals.startedAt);
-    let seconds = ms / 1000;
-    let hours = Math.floor(seconds / 3600);
-    let days = Math.floor(hours / 24);
-    hours = Math.floor(hours % 24);
+// Register error handler
+server.use(errorHandler)
 
-    seconds = seconds % 3600;
-    let minutes = Math.floor(seconds / 60);
-    seconds = Math.floor(seconds % 60);
-
-    hours = hours.toString().padStart(2, '0');
-    minutes = minutes.toString().padStart(2, '0');
-    seconds = seconds.toString().padStart(2, '0');
-    days = days === 0 ? '' : (days === 1 ? 'A day and ' : days + ' days and ');
-
-    res.json({
-        pong: {
-            startedAt: app.locals.startedAt,
-            itMeans: `${days}${hours}:${minutes}:${seconds}`,
-            protocol: req.protocol,
-        }
-    });
-});
-
-// Register routes
-api(app);
-
-// Handle 404
-app.all('*', function () {
-    throw Boom.notFound();
-});
-
-// Handle errors
-app.use(errorHandler);
-
-// Run the server
-modelInitializer()
-    .then(() => {
-
-        const userModel = require('./models/users');
-        console.log('User Model: %o', userModel.schema.path('password').options.min)
-        app.listen(config.server.port, function () {
-            app.locals.startedAt = new Date();
-            console.log('Server listening on %i port', config.server.port);
-        })
-    })
-
-
+server.listen(config.server.port, function () {
+  console.log(`Server is running on ${config.server.port} port`)
+})

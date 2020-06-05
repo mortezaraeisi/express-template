@@ -16,21 +16,21 @@ const emptyRule = Joi.object({});
  */
 module.exports = validate => (req, res, next) => {
 
-    for (const field of ['params', 'query', 'body']) {
+  for (const field of ['params', 'query', 'body']) {
 
-        const target = req[field];
-        const joiObject = validate[field] || emptyRule; // Should define every aspects
+    const target = req[field];
+    const joiObject = validate[field] || emptyRule; // Should define every aspects
 
-        try {
-            Joi.assert(target, joiObject);
+    try {
+      Joi.assert(target, joiObject);
 
-            const attempt = Joi.attempt(target, joiObject);
-            req[field] = attempt;
+      const attempt = Joi.attempt(target, joiObject);
+      req[field] = attempt;
 
-        } catch (e) {
-            return next(e);
-        }
+    } catch (e) {
+      return next(e);
     }
+  }
 
-    next();
+  next();
 }

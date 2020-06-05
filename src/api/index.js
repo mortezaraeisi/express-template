@@ -1,43 +1,49 @@
-const fs = require('fs');
-const path = require('path');
-const express = require('express');
-const joiHandler = require('../middlewares/joi-handler');
-const routeHandler = require('../middlewares/route-handler');
+const fs = require('fs')
+const path = require('path')
+const express = require('express')
+const joiHandler = require('../middlewares/joi-handler')
+const routeHandler = require('../middlewares/route-handler')
 
-module.exports = function (app) {
-    register(__dirname, app);
-};
+module.exports = function registerAPI (server) {
+  $logger.debug('registering api -- start')
 
-function register(directory, app) {
-
-    // Probe directories
-    fs.readdirSync(directory)
-        .filter(file => !/\.js$/.test(file))
-        .forEach(createSubApp);
-
-    function createSubApp(dir) {
-        const subApp = express();
-        app.use('/' + dir, subApp);
-        registerRoutes(path.join(directory, dir), subApp);
-
-        // Recursively check children
-        register(path.join(directory, dir), subApp);
+  // Register all api modules
+  const apiFiles = getFiles(__dirname)
+  for (const file of apiFiles) {
+    const installer = require(file)
+    const { route, method, validate, handler } = installer()
+    if (Array.isArray(method)) {
+      method.forEach(type => registerRoute({ route, method: type, validate, handler }))
+    } else {
+      registerRoute({ route, method, validate, handler })
     }
-}
+  }
 
-function registerRoutes(directory, app) {
+  // Tune settings option
+  function registerRoute ({ route, method, validate, handler }) {
+    server[method.toLowerCase()](route, [
+      joiHandler(validate),
+      routeHandler(handler)
+    ])
+    $logger.debug('registered: ' + method + ':' + route)
+  }
 
-    fs.readdirSync(directory)
-        .filter(file => /\.js$/.test(file))
-        .filter(x => x !== 'index.js')
-        .forEach(bindRoute);
+  // Read all api files recursively
+  function getFiles (dir) {
+    const directories = fs.readdirSync(dir, { withFileTypes: true })
+    const files = directories
+      .filter(x => !x.isDirectory())
+      .filter(x => /\.js$/.test(x.name))
+      .filter(x => x.name !== 'index.js')
+      .map(x => path.resolve(dir, x.name))
 
-    function bindRoute(file) {
+    return [
+      ...files,
+      ...directories
+        .filter(x => x.isDirectory())
+        .map(x => getFiles(path.resolve(dir, x.name)))]
+      .flat()
+  }
 
-        const {route, method, validate, handler} = require(path.join(directory, file));
-        app[method.toLowerCase()](route, [
-            joiHandler(validate),
-            routeHandler(handler)
-        ]);
-    }
+  $logger.debug('registering api -- end')
 }
