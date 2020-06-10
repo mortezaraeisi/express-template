@@ -13,9 +13,9 @@
   "dependencies": {
     "@hapi/boom": "^9.1.0",
     "@hapi/joi": "^17.1.1",
+    "cors": "^2.8.5",
     "express": "^4.17.1",
     "express-winston": "^4.0.3",
-    "install": "^0.13.0",
     "nodemon": "^2.0.4",
     "winston": "^3.2.1"
   }
