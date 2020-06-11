@@ -3,13 +3,13 @@ const Boom = require('@hapi/boom')
 module.exports = function (error, req, res, next) {
 
   try {
-    let response = error
+    let response = error || new Error('Invalid request data')
 
-    if (error.isJoi) {
+    if (response.isJoi) {
       const joiMessage = error.details.map(({ context: { key }, message }) => ({ key, message }))
       response = Boom.badData(undefined, joiMessage)
 
-    } else if (!error.isBoom) {
+    } else if (!response.isBoom) {
 
       // An unpredicted error had been occurred
       // Try to log, email, and so on...
@@ -19,9 +19,9 @@ module.exports = function (error, req, res, next) {
 
     res.status(208).json({
       success: false,
-      data: {
-        error: response.data,
-        payload: response.output.payload
+      error: {
+        error: (response.data || (response.output && response.output.error) || response.output || response)
+        // payload: response.output.payload
       }
     })
 
@@ -30,8 +30,7 @@ module.exports = function (error, req, res, next) {
     res.status(209)
       .json({
         success: false,
-        data: {
-          error: null,
+        error: {
           payload: {
             statusCode: 500,
             error: 'A Very bad error happened',
